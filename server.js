@@ -1,80 +1,43 @@
 const express = require('express');
-const fs = require('fs').promises;
 const path = require('path');
+const bodyParser = require('body-parser');
+const cors = require('cors');
 
 const app = express();
-const port = 3000;
-const dataFilePath = path.join(__dirname, 'holiday_data.json');
+app.use(cors());
+app.use(bodyParser.json());
 
+// Serve static files from public folder (or root)
+app.use(express.static(path.join(__dirname, 'public'))); // If using 'public'
+app.use(express.static(path.join(__dirname))); // If using root
+
+// Holiday data (example - in-memory)
 let data = {
-    employees: {
-        Levi: { allowance: 25, bookings: [], startDate: '2025-01-01' },
-        Efan: { allowance: 25, bookings: [], startDate: '2025-01-01' },
-        Freddie: { allowance: 25, bookings: [], startDate: '2025-01-01' },
-        Will: { allowance: 25, bookings: [], startDate: '2025-01-01' },
-        Cory: { allowance: 25, bookings: [], startDate: '2025-01-01' },
-        Richard: { allowance: 25, bookings: [], startDate: '2025-01-01' },
-        Jordan: { allowance: 25, bookings: [], startDate: '2025-01-01' }
-    },
-    rolloverPerformed: false
+  employees: {
+    Levi: { allowance: 25, bookings: [], startDate: '2025-01-01' },
+    Efan: { allowance: 25, bookings: [], startDate: '2025-01-01' },
+    Freddie: { allowance: 25, bookings: [], startDate: '2025-01-01' },
+    Will: { allowance: 25, bookings: [], startDate: '2025-01-01' },
+    Cory: { allowance: 25, bookings: [], startDate: '2025-01-01' },
+    Richard: { allowance: 25, bookings: [], startDate: '2025-01-01' },
+    Jordan: { allowance: 25, bookings: [], startDate: '2025-01-01' }
+  },
+  rolloverPerformed: false
 };
-let isDirty = false; // Track if data has changed
 
-// Middleware to parse JSON bodies
-app.use(express.json());
-
-// Serve static files (index.html)
-app.use(express.static(__dirname));
-
-// Load initial data from file
-async function loadData() {
-    try {
-        const fileData = await fs.readFile(dataFilePath, 'utf8');
-        data = JSON.parse(fileData);
-        console.log('Data loaded from holiday_data.json');
-    } catch (err) {
-        if (err.code === 'ENOENT') {
-            // File doesn't exist, create it with default data
-            await fs.writeFile(dataFilePath, JSON.stringify(data, null, 2));
-            console.log('Created holiday_data.json with default data');
-        } else {
-            console.error('Error loading data:', err);
-        }
-    }
-}
-
-// Auto-save data every 10 seconds if changed
-setInterval(async () => {
-    if (isDirty) {
-        try {
-            await fs.writeFile(dataFilePath, JSON.stringify(data, null, 2));
-            console.log('Data auto-saved to holiday_data.json');
-            isDirty = false;
-        } catch (err) {
-            console.error('Error auto-saving data:', err);
-        }
-    }
-}, 10000); // 10 seconds
-
-// API to get data
-app.get('/api/data', (req, res) => {
-    res.json(data);
-});
-
-// API to save data
+// API endpoints
+app.get('/api/data', (req, res) => res.json(data));
 app.post('/api/data', (req, res) => {
-    try {
-        data = req.body;
-        isDirty = true; // Mark data as changed for auto-save
-        res.json({ success: true });
-    } catch (err) {
-        console.error('Error saving data:', err);
-        res.status(500).json({ error: 'Failed to save data' });
-    }
+  data = req.body;
+  res.json({ success: true });
 });
 
-// Start the server
-app.listen(port, async () => {
-    console.log(`Server running at http://localhost:${port}`);
-    await loadData();
+// Serve index.html for any other routes
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html')); // If using 'public'
+  // Or just __dirname if not using 'public'
 });
+
+// Start server
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
