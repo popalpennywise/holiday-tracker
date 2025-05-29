@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Holiday Tracker</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Flatpickr CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <!-- Toastify CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+    <!-- Google Fonts (Inter) -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #1E2A44;
+            min-height: 100vh;
+            overflow-x: hidden;
+            color: #1F2937;
+        }
+        .container {
+            background: #F8FAFC;
+            border: 1px solid #E2E8F0;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            border-radius: 1rem;
+            padding: 2rem;
+            margin: 3rem auto;
+            max-width: 1200px;
+        }
+        .btn-glow {
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        .btn-glow:hover {
+            box-shadow: 0 0 20px rgba(79, 209, 197, 0.4);
+            transform: translateY(-2px);
+            background: #4FD1C5;
+        }
+        .btn-glow::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 300%;
+            background: rgba(255, 255, 255, 0.2);
+            transform: translate(-50%, -50%) rotate(45deg);
+            transition: width 0.3s ease;
+        }
+        .btn-glow:hover::after {
+            width: 300%;
+        }
+        .btn-glow:disabled {
+            background: #6B7280;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+        .card {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            cursor: pointer;
+        }
+        .card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+        }
+        .card.active {
+            border-color: #2C7A7B;
+            transform: scale(1.02);
+        }
+        .progress-bar {
+            height: 0.75rem;
+            border-radius: 9999px;
+            transition: width 0.5s ease-in-out;
+            background: #2C7A7B;
+        }
+        .flatpickr-calendar {
+            background: #F8FAFC;
+            border: 1px solid #E2E8F0;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+        }
+        .flatpickr-day.selected, .flatpickr-day.startRange, .flatpickr-day.endRange {
+            background: #2C7A7B;
+            border-color: #2C7A7B;
+            color: #FFFFFF;
+        }
+        .flatpickr-day:hover {
+            background: #EDF2F7;
+            border-color: #E2E8F0;
+        }
+        .table-row {
+            transition: background-color 0.3s ease, transform 0.2s ease;
+        }
+        .table-row:hover {
+            background-color: #EDF2F7;
+            transform: translateX(3px);
+        }
+        .avatar {
+            background: #2C7A7B;
+        }
+        .toastify {
+            background: #1E2A44 !important;
+            color: #FFFFFF !important;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+        .modal {
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="text-5xl font-bold text-gray-900 mb-10 text-center">Holiday Tracker</h1>
+
+        <!-- Manage Employees Section -->
+        <div class="mb-6">
+            <button id="manageEmployeesBtn" class="btn-glow bg-teal-600 text-white p-3 rounded-lg hover:bg-teal-500">Manage Employees</button>
+            <div id="manageEmployees" class="hidden mt-6 bg-white p-6 rounded-lg border border-gray-300">
+                <h2 class="text-2xl font-semibold text-gray-900 mb-4">Set Employee Start Dates</h2>
+                <div id="employeeStartDates" class="grid grid-cols-1 sm:grid-cols-2 gap-4"></div>
+                <button id="saveStartDatesBtn" class="mt-6 btn-glow bg-teal-600 text-white p-3 rounded-lg hover:bg-teal-500">Save Start Dates</button>
+            </div>
+        </div>
+
+        <!-- Adjust Allowances Section -->
+        <div class="mb-6">
+            <button id="adjustAllowancesBtn" class="btn-glow bg-teal-600 text-white p-3 rounded-lg hover:bg-teal-500">Adjust Allowances</button>
+            <div id="adjustAllowances" class="hidden mt-6 bg-white p-6 rounded-lg border border-gray-300">
+                <h2 class="text-2xl font-semibold text-gray-900 mb-4">Adjust Employee Allowances</h2>
+                <div id="employeeAdjustments" class="grid grid-cols-1 sm:grid-cols-2 gap-4"></div>
+                <button id="saveAdjustmentsBtn" class="mt-6 btn-glow bg-teal-600 text-white p-3 rounded-lg hover:bg-teal-500">Save Adjustments</button>
+            </div>
+        </div>
+
+        <!-- Rollover Buttons -->
+        <div class="mb-12 flex gap-4">
+            <button id="rolloverBtn" class="btn-glow bg-teal-600 text-white p-3 rounded-lg hover:bg-teal-500">Rollover 2025 Holidays</button>
+            <button id="undoRollover" class="btn-glow bg-teal-600 text-white p-3 rounded-lg" disabled>Undo Rollover 2025 Holidays</button>
+        </div>
+
+        <!-- Booking Form -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Employee</label>
+                <select id="employee" class="w-full p-3 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500">
+                    <option value="Levi">Levi</option>
+                    <option value="Efan">Efan</option>
+                    <option value="Freddie">Freddie</option>
+                    <option value="Will">Will</option>
+                    <option value="Cory">Cory</option>
+                    <option value="Richard">Richard</option>
+                    <option value="Jordan">Jordan</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Date Range</label>
+                <input id="dateRange" type="text" class="w-full p-3 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500" placeholder="Select date range">
+                <p id="workingDays" class="text-sm text-gray-600 mt-2"></p>
+            </div>
+            <div class="flex items-end">
+                <button id="bookHolidayBtn" class="w-full btn-glow bg-teal-600 text-white p-3 rounded-lg hover:bg-teal-500">Book Holiday</button>
+            </div>
+        </div>
+
+        <!-- Holiday Allowance Summary -->
+        <h2 class="text-3xl font-semibold text-gray-900 mb-6">Holiday Allowance</h2>
+        <div id="allowanceSummary" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-12"></div>
+
+        <!-- Diary View -->
+        <h2 class="text-3xl font-semibold text-gray-900 mb-6">Holiday Diary</h2>
+        <div class="overflow-x-auto rounded-lg border border-gray-300">
+            <table class="w-full bg-white">
+                <thead>
+                    <tr class="bg-teal-800 text-white">
+                        <th class="p-4 text-left">Employee</th>
+                        <th class="p-4 text-left">Start Date</th>
+                        <th class="p-4 text-left">End Date</th>
+                        <th class="p-4 text-left">Working Days</th>
+                        <th class="p-4 text-left">Action</th>
+                    </tr>
+                </thead>
+                <tbody id="diaryBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="deleteModal" class="hidden fixed inset-0 modal flex items-center justify-center">
+        <div class="bg-white p-6 rounded-lg border border-gray-300 max-w-md w-full">
+            <h3 class="text-xl font-semibold text-gray-900 mb-4">Confirm Deletion</h3>
+            <p id="deleteMessage" class="text-gray-600 mb-6"></p>
+            <div class="flex justify-end gap-4">
+                <button id="cancelDeleteBtn" class="bg-gray-300 text-gray-900 p-2 rounded-lg hover:bg-gray-400">Cancel</button>
+                <button id="confirmDeleteBtn" class="btn-glow bg-teal-600 text-white p-2 rounded-lg hover:bg-teal-500">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Flatpickr JS -->
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <!-- Toastify JS -->
+    <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+    <!-- GSAP for animations -->
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+    <script>
+        // UK Bank Holidays 2025
+        const bankHolidays2025 = [
+            '2025-01-01', '2025-04-18', '2025-04-21', '2025-05-05',
+            '2025-05-26', '2025-08-25', '2025-12-25', '2025-12-26'
+        ];
+
+        // Placeholder UK Bank Holidays 2026
+        const bankHolidays2026 = [
+            '2026-01-01', '2026-04-03', '2026-04-06', '2026-05-04',
+            '2026-05-25', '2026-08-31', '2026-12-25', '2026-12-28'
+        ];
+
+        let currentBankHolidays = bankHolidays2025;
+        let employees = {
+            Levi: { allowance: 25, bookings: [], startDate: '2025-01-01' },
+            Efan: { allowance: 25, bookings: [], startDate: '2025-01-01' },
+            Freddie: { allowance: 25, bookings: [], startDate: '2025-01-01' },
+            Will: { allowance: 25, bookings: [], startDate: '2025-01-01' },
+            Cory: { allowance: 25, bookings: [], startDate: '2025-01-01' },
+            Richard: { allowance: 25, bookings: [], startDate: '2025-01-01' },
+            Jordan: { allowance: 25, bookings: [], startDate: '2025-01-01' }
+        };
+        let selectedEmployee = null;
+        let deleteCandidate = null;
+        let rolloverBackup = null;
+        let rolloverPerformed = false;
+        let isDirty = false; // Track if data has changed
+
+        // Calculate pro-rated allowance
+        function calculateProRatedAllowance(startDate, year = 2025) {
+            try {
+                const start = new Date(startDate);
+                const endOfYear = new Date(`${year}-12-31`);
+                const totalDays = year === 2025 ? 365 : 366;
+                const remainingDays = Math.max(0, Math.ceil((endOfYear - start) / (1000 * 60 * 60 * 24)) + 1);
+                return Math.round(25 * (remainingDays / totalDays));
+            } catch (err) {
+                console.error('Error calculating pro-rated allowance:', err);
+                return 25;
+            }
+        }
+
+        // Load data from server
+        async function loadData() {
+            try {
+                const response = await fetch('/api/data');
+                if (!response.ok) throw new Error('Failed to fetch data');
+                const data = await response.json();
+                employees = data.employees || employees;
+                rolloverPerformed = data.rolloverPerformed || false;
+                currentBankHolidays = rolloverPerformed ? bankHolidays2026 : bankHolidays2025;
+                dateRangePicker.set('minDate', rolloverPerformed ? '2026-01-01' : '2025-01-01');
+                const undoBtn = document.getElementById('undoRollover');
+                if (undoBtn) undoBtn.disabled = !rolloverPerformed;
+                updateDiary();
+                updateAllowanceSummary();
+                updateEmployeeStartDates();
+                updateEmployeeAdjustments();
+            } catch (err) {
+                console.error('Error in loadData:', err);
+                Toastify({
+                    text: 'Failed to load data. Starting with default data.',
+                    duration: 3000,
+                    gravity: 'top',
+                    position: 'right'
+                }).showToast();
+
+                // Initialize default data if load fails
+                for (const employee in employees) {
+                    employees[employee].allowance = calculateProRatedAllowance(
+                        employees[employee].startDate,
+                        rolloverPerformed ? 2026 : 2025
+                    );
+                }
+                updateUIWithLocalData();
+            }
+        }
+
+        // Save data to server (triggers auto-save on server)
+        async function saveData() {
+            try {
+                const response = await fetch('/api/data', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ employees, rolloverPerformed })
+                });
+                if (!response.ok) throw new Error('Failed to save data');
+                isDirty = true; // Mark data as changed to trigger auto-save
+            } catch (err) {
+                console.error('Error in saveData:', err);
+                Toastify({
+                    text: `Error saving data: ${err.message}`,
+                    duration: 3000,
+                    gravity: 'top',
+                    position: 'right'
+                }).showToast();
+            }
+        }
+
+        function updateUIWithLocalData() {
+            updateDiary();
+            updateAllowanceSummary();
+            updateEmployeeStartDates();
+            updateEmployeeAdjustments();
+        }
+
+        // Calculate working days
+        function calculateWorkingDays(startDate, endDate) {
+            try {
+                let currentDate = new Date(startDate);
+                const end = new Date(endDate);
+                let workingDays = 0;
+
+                while (currentDate <= end) {
+                    const dayOfWeek = currentDate.getDay();
+                    const dateString = currentDate.toISOString().split('T')[0];
+                    if (dayOfWeek !== 0 && dayOfWeek !== 6 && !currentBankHolidays.includes(dateString)) {
+                        workingDays++;
+                    }
+                    currentDate.setDate(currentDate.getDate() + 1);
+                }
+                return workingDays;
+            } catch (err) {
+                console.error('Error calculating working days:', err);
+                return 0;
+            }
+        }
+
+        // Check for overlapping bookings
+        function hasOverlap(employee, startDate, endDate) {
+            try {
+                const newStart = new Date(startDate);
+                const newEnd = new Date(endDate);
+                return employees[employee].bookings.some(booking => {
+                    const existingStart = new Date(booking.startDate);
+                    const existingEnd = new Date(booking.endDate);
+                    return (newStart <= existingEnd && newEnd >= existingStart);
+                });
+            } catch (err) {
+                console.error('Error checking overlap:', err);
+                return false;
+            }
+        }
+
+        // Initialize Flatpickr
+        let dateRangePicker;
+        try {
+            dateRangePicker = flatpickr('#dateRange', {
+                mode: 'range',
+                dateFormat: 'Y-m-d',
+                minDate: '2025-01-01',
+                onChange: (selectedDates) => {
+                    try {
+                        if (selectedDates.length === 2) {
+                            const workingDays = calculateWorkingDays(selectedDates[0], selectedDates[1]);
+                            const workingDaysEl = document.getElementById('workingDays');
+                            if (workingDaysEl) {
+                                workingDaysEl.textContent = `${workingDays} working days`;
+                                gsap.to('#workingDays', { opacity: 1, y: 0, duration: 0.5 });
+                            }
+                        } else {
+                            const workingDaysEl = document.getElementById('workingDays');
+                            if (workingDaysEl) workingDaysEl.textContent = '';
+                        }
+                    } catch (err) {
+                        console.error('Error in date picker onChange:', err);
+                    }
+                }
+            });
+        } catch (err) {
+            console.error('Error initializing Flatpickr:', err);
+            Toastify({
+                text: 'Date picker failed to load.',
+                duration: 3000,
+                gravity: 'top',
+                position: 'right'
+            }).showToast();
+        }
+
+        // Book a holiday
+        function bookHoliday() {
+            try {
+                const employeeSelect = document.getElementById('employee');
+                const employee = employeeSelect ? employeeSelect.value : null;
+                const dates = dateRangePicker ? dateRangePicker.selectedDates : [];
+                if (!employee || dates.length !== 2) {
+                    Toastify({
+                        text: 'Please select an employee and a valid date range.',
+                        duration: 3000,
+                        gravity: 'top',
+                        position: 'right'
+                    }).showToast();
+                    return;
+                }
+
+                const startDate = dates[0].toISOString().split('T')[0];
+                const endDate = dates[1].toISOString().split('T')[0];
+                const workingDays = calculateWorkingDays(startDate, endDate);
+
+                if (workingDays > employees[employee].allowance) {
+                    Toastify({
+                        text: `Not enough holiday allowance. ${employee} has ${employees[employee].allowance} days left.`,
+                        duration: 3000,
+                        gravity: 'top',
+                        position: 'right'
+                    }).showToast();
+                    return;
+                }
+
+                if (hasOverlap(employee, startDate, endDate)) {
+                    Toastify({
+                        text: `Overlap detected. ${employee} already has a booking in this date range.`,
+                        duration: 3000,
+                        gravity: 'top',
+                        position: 'right'
+                    }).showToast();
+                    return;
+                }
+
+                employees[employee].bookings.push({
+                    startDate: startDate,
+                    endDate: endDate,
+                    workingDays: workingDays
+                });
+                employees[employee].allowance -= workingDays;
+
+                saveData();
+                if (dateRangePicker) dateRangePicker.clear();
+
+                Toastify({
+                    text: `Holiday booked for ${employee}! Data will auto-save.`,
+                    duration: 3000,
+                    gravity: 'top',
+                    position: 'right'
+                }).showToast();
+            } catch (err) {
+                console.error('Error booking holiday:', err);
+                Toastify({
+                    text: 'Failed to book holiday.',
+                    duration: 3000,
+                    gravity: 'top',
+                    position: 'right'
+                }).showToast();
+            }
+        }
+
+        // Delete a holiday
+        function initiateDelete(employee, index) {
+            try {
+                deleteCandidate = { employee, index };
+                const deleteMessageEl = document.getElementById('deleteMessage');
+                if (deleteMessageEl) {
+                    deleteMessageEl.textContent = `Are you sure you want to delete this booking for ${employee} from ${employees[employee].bookings[index].startDate} to ${employees[employee].bookings[index].endDate}?`;
+                }
+                const deleteModal = document.getElementById('deleteModal');
+                if (deleteModal) {
+                    deleteModal.classList.remove('hidden');
+                    gsap.from('#deleteModal', { opacity: 0, scale: 0.8, duration: 0.3 });
+                }
+            } catch (err) {
+                console.error('Error initiating delete:', err);
+            }
+        }
+
+        function cancelDelete() {
+            try {
+                const deleteModal = document.getElementById('deleteModal');
+                if (deleteModal) deleteModal.classList.add('hidden');
+                deleteCandidate = null;
+            } catch (err) {
+                console.error('Error canceling delete:', err);
+            }
+        }
+
+        function confirmDelete() {
+            try {
+                if (deleteCandidate) {
+                    const { employee, index } = deleteCandidate;
+                    const booking = employees[employee].bookings[index];
+                    employees[employee].allowance += booking.workingDays;
+                    employees[employee].bookings.splice(index, 1);
+                    saveData();
+                    const deleteModal = document.getElementById('deleteModal');
+                    if (deleteModal) deleteModal.classList.add('hidden');
+                    Toastify({
+                        text: `Booking deleted for ${employee}! Data will auto-save.`,
+                        duration: 3000,
+                        gravity: 'top',
+                        position: 'right'
+                    }).showToast();
+                    deleteCandidate = null;
+                }
+            } catch (err) {
+                console.error('Error confirming delete:', err);
+                Toastify({
+                    text: 'Failed to delete booking.',
+                    duration: 3000,
+                    gravity: 'top',
+                    position: 'right'
+                }).showToast();
+            }
+        }
+
+        // Rollover holidays
+        function rolloverHolidays() {
+            try {
+                rolloverBackup = JSON.parse(JSON.stringify(employees));
+                for (const employee in employees) {
+                    const remaining = employees[employee].allowance;
+                    employees[employee].allowance = calculateProRatedAllowance(employees[employee].startDate, 2026) + remaining;
+                    employees[employee].bookings = employees[employee].bookings.filter(booking => new Date(booking.startDate).getFullYear() >= 2026);
+                }
+                currentBankHolidays = bankHolidays2026;
+                dateRangePicker.set('minDate', '2026-01-01');
+                rolloverPerformed = true;
+                const undoBtn = document.getElementById('undoRollover');
+                if (undoBtn) undoBtn.disabled = false;
+                saveData();
+                Toastify({
+                    text: 'Holidays rolled over to 2026! Data will auto-save.',
+                    duration: 3000,
+                    gravity: 'top',
+                    position: 'right'
+                }).showToast();
+            } catch (err) {
+                console.error('Error rolling over holidays:', err);
+                Toastify({
+                    text: 'Failed to rollover holidays.',
+                    duration: 3000,
+                    gravity: 'top',
+                    position: 'right'
+                }).showToast();
+            }
+        }
+
+        // Undo rollover holidays
+        function undoRolloverHolidays() {
+            try {
+                if (rolloverBackup && rolloverPerformed) {
+                    employees = JSON.parse(JSON.stringify(rolloverBackup));
+                    currentBankHolidays = bankHolidays2025;
+                    dateRangePicker.set('minDate', '2025-01-01');
+                    rolloverPerformed = false;
+                    rolloverBackup = null;
+                    const undoBtn = document.getElementById('undoRollover');
+                    if (undoBtn) undoBtn.disabled = true;
+                    saveData();
+                    Toastify({
+                        text: 'Rollover undone! Restored 2025 holidays. Data will auto-save.',
+                        duration: 3000,
+                        gravity: 'top',
+                        position: 'right'
+                    }).showToast();
+                }
+            } catch (err) {
+                console.error('Error undoing rollover:', err);
+                Toastify({
+                    text: 'Failed to undo rollover.',
+                    duration: 3000,
+                    gravity: 'top',
+                    position: 'right'
+                }).showToast();
+            }
+        }
+
+        // Toggle manage employees section
+        function toggleManageEmployees() {
+            try {
+                const section = document.getElementById('manageEmployees');
+                if (section) {
+                    section.classList.toggle('hidden');
+                    gsap.from('#manageEmployees', { opacity: 0, y: 20, duration: 0.5 });
+                }
+            } catch (err) {
+                console.error('Error toggling manage employees:', err);
+            }
+        }
+
+        // Toggle adjust allowances section
+        function toggleAdjustAllowances() {
+            try {
+                const section = document.getElementById('adjustAllowances');
+                if (section) {
+                    section.classList.toggle('hidden');
+                    gsap.from('#adjustAllowances', { opacity: 0, y: 20, duration: 0.5 });
+                }
+            } catch (err) {
+                console.error('Error toggling adjust allowances:', err);
+            }
+        }
+
+        // Update employee start dates UI
+        function updateEmployeeStartDates() {
+            try {
+                const container = document.getElementById('employeeStartDates');
+                if (!container) return;
+                container.innerHTML = '';
+                for (const employee in employees) {
+                    const div = document.createElement('div');
+                    div.innerHTML = `
+                        <label class="block text-sm font-medium text-gray-700 mb-2">${employee} Start Date</label>
+                        <input type="date" id="startDate-${employee}" value="${employees[employee].startDate}" class="w-full p-3 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500">
+                    `;
+                    container.appendChild(div);
+                }
+            } catch (err) {
+                console.error('Error updating start dates UI:', err);
+            }
+        }
+
+        // Update employee adjustments UI
+        function updateEmployeeAdjustments() {
+            try {
+                const container = document.getElementById('employeeAdjustments');
+                if (!container) return;
+                container.innerHTML = '';
+                for (const employee in employees) {
+                    const div = document.createElement('div');
+                    div.innerHTML = `
+                        <label class="block text-sm font-medium text-gray-700 mb-2">${employee} Allowance Adjustment</label>
+                        <input type="number" id="adjust-${employee}" value="0" class="w-full p-3 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500" placeholder="Enter days (e.g., 5 or -3)">
+                    `;
+                    container.appendChild(div);
+                }
+            } catch (err) {
+                console.error('Error updating adjustments UI:', err);
+            }
+        }
+
+        // Save start dates
+        function saveStartDates() {
+            try {
+                for (const employee in employees) {
+                    const input = document.getElementById(`startDate-${employee}`);
+                    if (input && input.value) {
+                        employees[employee].startDate = input.value;
+                        employees[employee].allowance = calculateProRatedAllowance(
+                            input.value,
+                            rolloverPerformed ? 2026 : 2025
+                        );
+                    }
+                }
+                saveData();
+                toggleManageEmployees();
+                Toastify({
+                    text: 'Start dates saved! Data will auto-save.',
+                    duration: 3000,
+                    gravity: 'top',
+                    position: 'right'
+                }).showToast();
+            } catch (err) {
+                console.error('Error saving start dates:', err);
+                Toastify({
+                    text: 'Failed to save start dates.',
+                    duration: 3000,
+                    gravity: 'top',
+                    position: 'right'
+                }).showToast();
+            }
+        }
+
+        // Save allowance adjustments
+        function saveAdjustments() {
+            try {
+                let hasError = false;
+                for (const employee in employees) {
+                    const input = document.getElementById(`adjust-${employee}`);
+                    const adjustment = parseInt(input.value) || 0;
+                    const newAllowance = employees[employee].allowance + adjustment;
+                    if (newAllowance < 0) {
+                        Toastify({
+                            text: `Cannot reduce ${employee}'s allowance below 0.`,
+                            duration: 3000,
+                            gravity: 'top',
+                            position: 'right'
+                        }).showToast();
+                        hasError = true;
+                    } else {
+                        employees[employee].allowance = newAllowance;
+                    }
+                }
+                if (!hasError) {
+                    saveData();
+                    toggleAdjustAllowances();
+                    Toastify({
+                        text: 'Allowances adjusted successfully! Data will auto-save.',
+                        duration: 3000,
+                        gravity: 'top',
+                        position: 'right'
+                    }).showToast();
+                }
+            } catch (err) {
+                console.error('Error saving adjustments:', err);
+                Toastify({
+                    text: 'Failed to adjust allowances.',
+                    duration: 3000,
+                    gravity: 'top',
+                    position: 'right'
+                }).showToast();
+            }
+        }
+
+        // Update diary table
+        function updateDiary() {
+            try {
+                const diaryBody = document.getElementById('diaryBody');
+                if (!diaryBody) return;
+                diaryBody.innerHTML = '';
+
+                const employeesToShow = selectedEmployee ? [selectedEmployee] : Object.keys(employees);
+                employeesToShow.forEach(employee => {
+                    employees[employee].bookings.forEach((booking, index) => {
+                        const row = document.createElement('tr');
+                        row.className = 'table-row';
+                        row.innerHTML = `
+                            <td class="p-4"><span class="inline-block w-8 h-8 rounded-full avatar text-white flex items-center justify-center">${employee.charAt(0)}</span> ${employee}</td>
+                            <td class="p-4">${booking.startDate}</td>
+                            <td class="p-4">${booking.endDate}</td>
+                            <td class="p-4">${booking.workingDays}</td>
+                            <td class="p-4"><button onclick="initiateDelete('${employee}', ${index})" class="text-red-600 hover:text-red-800"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5-4h4M7 7h10"></path></svg></button></td>
+                        `;
+                        diaryBody.appendChild(row);
+                    });
+                });
+
+                gsap.from('.table-row', {
+                    opacity: 0,
+                    y: 20,
+                    stagger: 0.1,
+                    duration: 0.5
+                });
+            } catch (err) {
+                console.error('Error updating diary:', err);
+                Toastify({
+                    text: 'Failed to update diary.',
+                    duration: 3000,
+                    gravity: 'top',
+                    position: 'right'
+                }).showToast();
+            }
+        }
+
+        // Update allowance summary
+        function updateAllowanceSummary() {
+            try {
+                const summaryDiv = document.getElementById('allowanceSummary');
+                if (!summaryDiv) return;
+                summaryDiv.innerHTML = '';
+
+                for (const employee in employees) {
+                    const maxAllowance = 25 + (rolloverPerformed ? employees[employee].allowance : 0);
+                    const percentage = Math.min(100, (employees[employee].allowance / maxAllowance) * 100);
+                    const div = document.createElement('div');
+                    div.className = `card bg-white p-6 rounded-lg border border-gray-300 ${selectedEmployee === employee ? 'active' : ''}`;
+                    div.onclick = () => {
+                        selectedEmployee = selectedEmployee === employee ? null : employee;
+                        updateDiary();
+                        updateAllowanceSummary();
+                    };
+                    div.innerHTML = `
+                        <div class="flex items-center">
+                            <div class="w-12 h-12 avatar rounded-full flex items-center justify-center text-white text-xl font-semibold">
+                                ${employee.charAt(0)}
+                            </div>
+                            <div class="ml-4 flex-1">
+                                <p class="text-lg font-medium text-gray-900">${employee}</p>
+                                <p class="text-sm text-gray-600">${employees[employee].allowance} days (Started: ${employees[employee].startDate})</p>
+                                <div class="w-full bg-gray-200 rounded-full h-3 mt-2">
+                                    <div class="progress-bar" style="width: ${percentage}%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    summaryDiv.appendChild(div);
+                }
+
+                gsap.from('.card', {
+                    opacity: 0,
+                    scale: 0.95,
+                    stagger: 0.1,
+                    duration: 0.5
+                });
+            } catch (err) {
+                console.error('Error updating allowance summary:', err);
+                Toastify({
+                    text: 'Failed to update allowances.',
+                    duration: 3000,
+                    gravity: 'top',
+                    position: 'right'
+                }).showToast();
+            }
+        }
+
+        // Initialize
+        loadData();
+
+        // GSAP entrance animation
+        gsap.from('.container', {
+            opacity: 0,
+            y: 50,
+            duration: 1,
+            ease: 'power3.out'
+        });
+
+        // Event listeners for buttons
+        document.addEventListener('DOMContentLoaded', () => {
+            const manageEmployeesBtn = document.getElementById('manageEmployeesBtn');
+            if (manageEmployeesBtn) manageEmployeesBtn.addEventListener('click', toggleManageEmployees);
+
+            const adjustAllowancesBtn = document.getElementById('adjustAllowancesBtn');
+            if (adjustAllowancesBtn) adjustAllowancesBtn.addEventListener('click', toggleAdjustAllowances);
+
+            const saveStartDatesBtn = document.getElementById('saveStartDatesBtn');
+            if (saveStartDatesBtn) saveStartDatesBtn.addEventListener('click', saveStartDates);
+
+            const saveAdjustmentsBtn = document.getElementById('saveAdjustmentsBtn');
+            if (saveAdjustmentsBtn) saveAdjustmentsBtn.addEventListener('click', saveAdjustments);
+
+            const bookHolidayBtn = document.getElementById('bookHolidayBtn');
+            if (bookHolidayBtn) bookHolidayBtn.addEventListener('click', bookHoliday);
+
+            const rolloverBtn = document.getElementById('rolloverBtn');
+            if (rolloverBtn) rolloverBtn.addEventListener('click', rolloverHolidays);
+
+            const undoRolloverBtn = document.getElementById('undoRollover');
+            if (undoRolloverBtn) undoRolloverBtn.addEventListener('click', undoRolloverHolidays);
+
+            const cancelDeleteBtn = document.getElementById('cancelDeleteBtn');
+            if (cancelDeleteBtn) cancelDeleteBtn.addEventListener('click', cancelDelete);
+
+            const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+            if (confirmDeleteBtn) confirmDeleteBtn.addEventListener('click', confirmDelete);
+        });
+    </script>
+</body>
+</html>
