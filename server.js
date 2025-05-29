@@ -1,43 +1,55 @@
 const express = require('express');
-const path = require('path');
 const bodyParser = require('body-parser');
 const cors = require('cors');
+const { Pool } = require('pg');
+require('dotenv').config();
 
 const app = express();
 app.use(cors());
 app.use(bodyParser.json());
+app.use(express.static(__dirname));
 
-// Serve static files from public folder (or root)
-app.use(express.static(path.join(__dirname, 'public'))); // If using 'public'
-app.use(express.static(path.join(__dirname))); // If using root
-
-// Holiday data (example - in-memory)
-let data = {
-  employees: {
-    Levi: { allowance: 25, bookings: [], startDate: '2025-01-01' },
-    Efan: { allowance: 25, bookings: [], startDate: '2025-01-01' },
-    Freddie: { allowance: 25, bookings: [], startDate: '2025-01-01' },
-    Will: { allowance: 25, bookings: [], startDate: '2025-01-01' },
-    Cory: { allowance: 25, bookings: [], startDate: '2025-01-01' },
-    Richard: { allowance: 25, bookings: [], startDate: '2025-01-01' },
-    Jordan: { allowance: 25, bookings: [], startDate: '2025-01-01' }
-  },
-  rolloverPerformed: false
-};
-
-// API endpoints
-app.get('/api/data', (req, res) => res.json(data));
-app.post('/api/data', (req, res) => {
-  data = req.body;
-  res.json({ success: true });
+// Set up Postgres connection using the DATABASE_URL from Render
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false
+  }
 });
 
-// Serve index.html for any other routes
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html')); // If using 'public'
-  // Or just __dirname if not using 'public'
+// Create table if it doesn't exist
+pool.query(`
+  CREATE TABLE IF NOT EXISTS holiday_data (
+    id SERIAL PRIMARY KEY,
+    data JSONB
+  );
+`, (err) => {
+  if (err) console.error('Error creating table:', err);
+  else console.log('Table ready!');
 });
 
-// Start server
+// Load data (latest entry)
+app.get('/api/data', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT data FROM holiday_data ORDER BY id DESC LIMIT 1');
+    const row = result.rows[0];
+    res.json(row ? row.data : {});
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Error fetching data');
+  }
+});
+
+// Save data
+app.post('/api/data', async (req, res) => {
+  try {
+    await pool.query('INSERT INTO holiday_data (data) VALUES ($1)', [req.body]);
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Error saving data');
+  }
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
